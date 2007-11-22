@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>File: README</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+  <meta http-equiv="Content-Script-Type" content="text/javascript" />
+  <link rel="stylesheet" href=".././rdoc-style.css" type="text/css" media="screen" />
+  <script type="text/javascript">
+  // <![CDATA[
+
+  function popupCode( url ) {
+    window.open(url, "Code", "resizable=yes,scrollbars=yes,toolbar=no,status=no,height=150,width=400")
+  }
+
+  function toggleCode( id ) {
+    if ( document.getElementById )
+      elem = document.getElementById( id );
+    else if ( document.all )
+      elem = eval( "document.all." + id );
+    else
+      return false;
+
+    elemStyle = elem.style;
+    
+    if ( elemStyle.display != "block" ) {
+      elemStyle.display = "block"
+    } else {
+      elemStyle.display = "none"
+    }
+
+    return true;
+  }
+  
+  // Make codeblocks hidden by default
+  document.writeln( "<style type=\"text/css\">div.method-source-code { display: none }</style>" )
+  
+  // ]]>
+  </script>
+
+</head>
+<body>
+
+
+
+  <div id="fileHeader">
+    <h1>README</h1>
+    <table class="header-table">
+    <tr class="top-aligned-row">
+      <td><strong>Path:</strong></td>
+      <td>README
+      </td>
+    </tr>
+    <tr class="top-aligned-row">
+      <td><strong>Last Update:</strong></td>
+      <td>Thu Nov 22 09:37:15 -0600 2007</td>
+    </tr>
+    </table>
+  </div>
+  <!-- banner header -->
+
+  <div id="bodyContent">
+
+
+
+  <div id="contextContent">
+
+    <div id="description">
+      <h1><a href="../classes/ActsAsTrashable.html">ActsAsTrashable</a></h1>
+<p>
+This plugin is designed to reduce the risk of adding a delete function to
+your application by allowing you to restore records that have been
+destroyed.
+</p>
+<p>
+Often it makes sense to add a function to delete records so that your
+production database isn&#8216;t polluted with bad records. However, you can
+quickly regret this feature should one of your users get a little trigger
+happy and delete something they shouldn&#8216;t have. Restoring the lost
+data from the database can be time consuming and may not even be possible.
+The inspiration for this plugin was a user who didn&#8216;t understand that
+the &quot;reject&quot; function deleted the data for everyone and not just
+from that user&#8216;s view.
+</p>
+<p>
+To protect yourself, simply declare acts_as_trashable in any active record
+model. This will cause the record to be serialized to a trash_records table
+before it is deleted when you call destroy. In addition, any
+has_and_belongs_to_many associations or any has_many or has_one
+associations declared with :dependent =&gt; :destroy will also be
+serialized. These associations should not have acts_as_trashable
+(there&#8216;s no harm if they do, you just end up with twice as much
+trash). You must run the included migration to create the trash_records
+table.
+</p>
+<p>
+These trash records and all their associations can be restored later by
+calling restore! on the <a
+href="../classes/TrashRecord.html">TrashRecord</a> records. Calling
+restore! will also delete the <a
+href="../classes/TrashRecord.html">TrashRecord</a>. You can also call
+restore (without the exclamation) which will just restore the original
+record and associations to memory without saving to the database or
+deleting the trash. This can be useful if you only need to inspect the
+trash record or if you&#8216;ve changed the model since the original record
+was created so that requires some additional processing before it can be
+saved. When records are restored, the id values are also restored to the
+original values.
+</p>
+<p>
+The <a
+href="../classes/ActsAsTrashable/ClassMethods.html">ActsAsTrashable::ClassMethods</a>
+are mixed into your model when you call acts_as_trashable. These provide
+some convenience methods for restoring and emptying the trash for only a
+specific class.
+</p>
+<p>
+If you wish to destroy a record without trashing it, simply call
+destroy_without_trash instead of destroy. Also, this plugin does not affect
+the delete or delete_all methods on active record. These will still delete
+the records directly from the database.
+</p>
+<p>
+To keep your trash table from filling up, you can call empty_trash on <a
+href="../classes/TrashRecord.html">TrashRecord</a> or on any <a
+href="../classes/ActsAsTrashable.html">ActsAsTrashable</a> model. These
+methods clear out records older than a specified number of seconds.
+</p>
+
+    </div>
+
+
+   </div>
+
+
+  </div>
+
+
+    <!-- if includes -->
+
+    <div id="section">
+
+
+
+
+
+      
+
+
+    <!-- if method_list -->
+
+
+  </div>
+
+
+<div id="validator-badges">
+  <p><small><a href="http://validator.w3.org/check/referer">[Validate]</a></small></p>
+</div>
+
+</body>
+</html>
