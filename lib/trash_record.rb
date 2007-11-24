@@ -13,8 +13,10 @@ class TrashRecord < ActiveRecord::Base
     restore_class = self.trashable_type.constantize
     attrs, association_attrs = attributes_and_associations(restore_class, self.trashable_attributes)
     
-    record = restore_class.new(attrs)
-    record.id = self.trashable_id
+    record = restore_class.new
+    attrs.each_pair do |key, value|
+      record.send("#{key}=", value)
+    end
     
     association_attrs.each_pair do |association, attribute_values|
       restore_association(record, association, attribute_values)
@@ -118,8 +120,9 @@ class TrashRecord < ActiveRecord::Base
     return unless associated_record
     
     attrs, association_attrs = attributes_and_associations(associated_record.class, attributes)
-    associated_record.attributes = attrs
-    associated_record.id = attrs['id']
+    attrs.each_pair do |key, value|
+      associated_record.send("#{key}=", value)
+    end
     
     association_attrs.each_pair do |key, values|
       restore_association(associated_record, key, values)

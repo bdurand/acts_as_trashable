@@ -20,6 +20,14 @@ describe "TrashRecord" do
     def id= (val)
       attributes['id'] = val
     end
+    
+    def name= (val)
+      attributes['name'] = val
+    end
+    
+    def value= (val)
+      attributes['value'] = val
+    end
   end
   
   class TestTrashableAssociationRecord < TestTrashableRecord
