@@ -11,7 +11,11 @@ describe "TrashRecord" do
     end
     
     def self.reflections
-      {}
+      @reflections || {}
+    end
+    
+    def self.reflections= (vals)
+      @reflections = vals
     end
   
     def id
@@ -33,14 +37,28 @@ describe "TrashRecord" do
   
   class TestTrashableAssociationRecord < TestTrashableRecord
     def self.reflections
-      {}
+      @reflections || {}
+    end
+    
+    def self.reflections= (vals)
+      @reflections = vals
     end
   end
   
   class TestTrashableSubAssociationRecord < TestTrashableRecord
     def self.reflections
-      {}
+      @reflections || {}
     end
+    
+    def self.reflections= (vals)
+      @reflections = vals
+    end
+  end
+  
+  before(:each) do
+    TestTrashableRecord.reflections = nil
+    TestTrashableAssociationRecord.reflections = nil
+    TestTrashableSubAssociationRecord.reflections = nil
   end
   
   it "should serialize all the attributes of the original model" do
@@ -74,7 +92,7 @@ describe "TrashRecord" do
     dependent_associations_reflection = stub(:association, :name => :dependent_associations, :macro => :has_many, :options => {:dependent => :destroy})
     non_dependent_associations_reflection = stub(:association, :name => :non_dependent_associations, :macro => :has_many, :options => {})
     
-    TestTrashableRecord.should_receive(:reflections).and_return({:dependent_associations => dependent_associations_reflection, :non_dependent_associations => non_dependent_associations_reflection})
+    TestTrashableRecord.reflections = {:dependent_associations => dependent_associations_reflection, :non_dependent_associations => non_dependent_associations_reflection}
     original.should_not_receive(:non_dependent_associations)
     original.should_receive(:dependent_associations).and_return(dependent_associations)
     
@@ -90,7 +108,7 @@ describe "TrashRecord" do
     dependent_association_reflection = stub(:association, :name => :dependent_association, :macro => :has_one, :options => {:dependent => :destroy})
     non_dependent_association_reflection = stub(:association, :name => :non_dependent_association, :macro => :has_one, :options => {})
     
-    TestTrashableRecord.should_receive(:reflections).and_return({:dependent_association => dependent_association_reflection, :non_dependent_association => non_dependent_association_reflection})
+    TestTrashableRecord.reflections = {:dependent_association => dependent_association_reflection, :non_dependent_association => non_dependent_association_reflection}
     original.should_not_receive(:non_dependent_association)
     original.should_receive(:dependent_association).and_return(dependent_association)
     
@@ -103,7 +121,7 @@ describe "TrashRecord" do
     original = TestTrashableRecord.new(attributes)
     association_reflection = stub(:association, :name => :associations, :macro => :has_and_belongs_to_many)
     
-    TestTrashableRecord.should_receive(:reflections).and_return({:dependent_association => association_reflection})
+    TestTrashableRecord.reflections = {:dependent_association => association_reflection}
     original.should_receive(:association_ids).and_return([2, 3, 4])
     
     trash = TrashRecord.new(original)
@@ -123,8 +141,8 @@ describe "TrashRecord" do
     sub_association = TestTrashableSubAssociationRecord.new(sub_association_attributes)
     sub_association_reflection = stub(:sub_association, :name => :sub_association, :macro => :has_one, :options => {:dependent => :destroy})
     
-    TestTrashableRecord.should_receive(:reflections).and_return({:dependent_associations => dependent_associations_reflection})
-    TestTrashableAssociationRecord.stub!(:reflections).and_return({:sub_association => sub_association_reflection})
+    TestTrashableRecord.reflections = {:dependent_associations => dependent_associations_reflection}
+    TestTrashableAssociationRecord.reflections = {:sub_association => sub_association_reflection}
     original.should_receive(:dependent_associations).and_return(dependent_associations)
     association_1.should_receive(:sub_association).and_return(sub_association)
     association_2.should_receive(:sub_association).and_return(nil)
@@ -149,7 +167,7 @@ describe "TrashRecord" do
     trash = TrashRecord.new(TestTrashableRecord.new)
     trash.data = Zlib::Deflate.deflate(Marshal.dump(attributes))
     associations_reflection = stub(:associations, :name => :associations, :macro => :has_many, :options => {:dependent => :destroy})
-    TestTrashableRecord.stub!(:reflections).and_return({:associations => associations_reflection})
+    TestTrashableRecord.reflections = {:associations => associations_reflection}
     TestTrashableRecord.should_receive(:new).and_return(restored)
     trash.should_receive(:restore_association).with(restored, :associations, {'id' => 2, 'value' => 'val'})
     restored = trash.restore
@@ -160,7 +178,7 @@ describe "TrashRecord" do
     record = TestTrashableRecord.new
     
     associations_reflection = stub(:associations, :name => :associations, :macro => :has_many, :options => {:dependent => :destroy})
-    TestTrashableRecord.stub!(:reflections).and_return({:associations => associations_reflection})
+    TestTrashableRecord.reflections = {:associations => associations_reflection}
     associations = mock(:associations)
     record.should_receive(:associations).and_return(associations)
     associated_record = TestTrashableAssociationRecord.new
@@ -176,7 +194,7 @@ describe "TrashRecord" do
     record = TestTrashableRecord.new
     
     association_reflection = stub(:associations, :name => :association, :macro => :has_one, :klass => TestTrashableAssociationRecord, :options => {:dependent => :destroy})
-    TestTrashableRecord.stub!(:reflections).and_return({:association => association_reflection})
+    TestTrashableRecord.reflections = {:association => association_reflection}
     associated_record = TestTrashableAssociationRecord.new
     TestTrashableAssociationRecord.should_receive(:new).and_return(associated_record)
     record.should_receive(:association=).with(associated_record)
@@ -191,7 +209,7 @@ describe "TrashRecord" do
     record = TestTrashableRecord.new
     
     associations_reflection = stub(:associations, :name => :associations, :macro => :has_and_belongs_to_many, :options => {})
-    TestTrashableRecord.stub!(:reflections).and_return({:associations => associations_reflection})
+    TestTrashableRecord.reflections = {:associations => associations_reflection}
     record.should_receive(:association_ids=).with([2, 3, 4])
     
     trash.send(:restore_association, record, :associations, [2, 3, 4])
@@ -202,7 +220,7 @@ describe "TrashRecord" do
     record = TestTrashableRecord.new
     
     associations_reflection = stub(:associations, :name => :associations, :macro => :has_many, :options => {:dependent => :destroy})
-    TestTrashableRecord.stub!(:reflections).and_return({:associations => associations_reflection})
+    TestTrashableRecord.reflections = {:associations => associations_reflection}
     associations = mock(:associations)
     record.should_receive(:associations).and_return(associations)
     associated_record = TestTrashableAssociationRecord.new
@@ -211,7 +229,7 @@ describe "TrashRecord" do
     sub_associated_record = TestTrashableSubAssociationRecord.new
     TestTrashableAssociationRecord.should_receive(:new).and_return(sub_associated_record)
     sub_association_reflection = stub(:sub_association, :name => :sub_association, :macro => :has_one, :klass => TestTrashableAssociationRecord, :options => {:dependent => :destroy})
-    TestTrashableAssociationRecord.stub!(:reflections).and_return({:sub_association => sub_association_reflection})
+    TestTrashableAssociationRecord.reflections = {:sub_association => sub_association_reflection}
     associated_record.should_receive(:sub_association=).with(sub_associated_record)
     
     trash.send(:restore_association, record, :associations, {'id' => 1, 'value' => 'val', :sub_association => {'id' => 2, 'value' => 'sub'}})
