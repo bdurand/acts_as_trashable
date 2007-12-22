@@ -1,4 +1,5 @@
 require File.expand_path(File.dirname(__FILE__) + '/spec_helper')
+require 'zlib'
 
 describe "TrashRecord" do
   
@@ -49,6 +50,19 @@ describe "TrashRecord" do
     trash.trashable_id.should == 1
     trash.trashable_type.should == "TestTrashableRecord"
     trash.trashable_attributes.should == attributes
+  end
+  
+  it "should be backward compatible with uncompressed data" do
+    attributes_1 = {'id' => 1, 'name' => 'trash', 'value' => 5}
+    attributes_2 = {'id' => 2, 'name' => 'trash2', 'value' => 10}
+    trash = TrashRecord.new(TestTrashableRecord.new({}))
+    uncompressed = Marshal.dump(attributes_1)
+    compressed = Zlib::Deflate.deflate(Marshal.dump(attributes_2))
+    
+    trash.data = uncompressed
+    trash.trashable_attributes.should == attributes_1
+    trash.data = compressed
+    trash.trashable_attributes.should == attributes_2
   end
   
   it "should serialize all the attributes of has_many associations with :dependent => :destroy" do
@@ -122,7 +136,7 @@ describe "TrashRecord" do
   it "should be able to restore the original model" do
     attributes = {'id' => 1, 'name' => 'trash', 'value' => 5}
     trash = TrashRecord.new(TestTrashableRecord.new(attributes))
-    trash.data = Marshal.dump(attributes)
+    trash.data = Zlib::Deflate.deflate(Marshal.dump(attributes))
     restored = trash.restore
     restored.class.should == TestTrashableRecord
     restored.id.should == 1
@@ -133,7 +147,7 @@ describe "TrashRecord" do
     restored = TestTrashableRecord.new
     attributes = {'id' => 1, 'name' => 'trash', 'value' => Time.now, :associations => {'id' => 2, 'value' => 'val'}}
     trash = TrashRecord.new(TestTrashableRecord.new)
-    trash.data = Marshal.dump(attributes)
+    trash.data = Zlib::Deflate.deflate(Marshal.dump(attributes))
     associations_reflection = stub(:associations, :name => :associations, :macro => :has_many, :options => {:dependent => :destroy})
     TestTrashableRecord.stub!(:reflections).and_return({:associations => associations_reflection})
     TestTrashableRecord.should_receive(:new).and_return(restored)
@@ -161,10 +175,11 @@ describe "TrashRecord" do
     trash = TrashRecord.new(TestTrashableRecord.new)
     record = TestTrashableRecord.new
     
-    association_reflection = stub(:associations, :name => :association, :macro => :has_one, :options => {:dependent => :destroy})
+    association_reflection = stub(:associations, :name => :association, :macro => :has_one, :klass => TestTrashableAssociationRecord, :options => {:dependent => :destroy})
     TestTrashableRecord.stub!(:reflections).and_return({:association => association_reflection})
     associated_record = TestTrashableAssociationRecord.new
-    record.should_receive(:build_association).and_return(associated_record)
+    TestTrashableAssociationRecord.should_receive(:new).and_return(associated_record)
+    record.should_receive(:association=).with(associated_record)
     
     trash.send(:restore_association, record, :association, {'id' => 1, 'value' => 'val'})
     associated_record.id.should == 1
@@ -194,9 +209,10 @@ describe "TrashRecord" do
     associations.should_receive(:build).and_return(associated_record)
 
     sub_associated_record = TestTrashableSubAssociationRecord.new
-    sub_association_reflection = stub(:sub_association, :name => :sub_association, :macro => :has_one, :options => {:dependent => :destroy})
+    TestTrashableAssociationRecord.should_receive(:new).and_return(sub_associated_record)
+    sub_association_reflection = stub(:sub_association, :name => :sub_association, :macro => :has_one, :klass => TestTrashableAssociationRecord, :options => {:dependent => :destroy})
     TestTrashableAssociationRecord.stub!(:reflections).and_return({:sub_association => sub_association_reflection})
-    associated_record.should_receive(:build_sub_association).and_return(sub_associated_record)
+    associated_record.should_receive(:sub_association=).with(sub_associated_record)
     
     trash.send(:restore_association, record, :associations, {'id' => 1, 'value' => 'val', :sub_association => {'id' => 2, 'value' => 'sub'}})
     associated_record.id.should == 1
@@ -220,7 +236,7 @@ describe "TrashRecord" do
     max_age = mock(:max_age)
     time = 1.day.ago
     max_age.should_receive(:ago).and_return(time)
-    TrashRecord.should_receive(:delete_all).with(['created_at < ?', time])
+    TrashRecord.should_receive(:delete_all).with(['created_at <= ?', time])
     TrashRecord.empty_trash(max_age)
   end
   
@@ -228,7 +244,7 @@ describe "TrashRecord" do
     max_age = mock(:max_age)
     time = 1.day.ago
     max_age.should_receive(:ago).and_return(time)
-    TrashRecord.should_receive(:delete_all).with(['created_at < ? AND trashable_type IN (?, ?)', time, 'TypeOne', 'TypeTwo'])
+    TrashRecord.should_receive(:delete_all).with(['created_at <= ? AND trashable_type IN (?, ?)', time, 'TypeOne', 'TypeTwo'])
     TrashRecord.empty_trash(max_age, :only => [:TypeOne, :TypeTwo])
   end
   
@@ -236,7 +252,7 @@ describe "TrashRecord" do
     max_age = mock(:max_age)
     time = 1.day.ago
     max_age.should_receive(:ago).and_return(time)
-    TrashRecord.should_receive(:delete_all).with(['created_at < ? AND trashable_type NOT IN (?)', time, 'TypeOne'])
+    TrashRecord.should_receive(:delete_all).with(['created_at <= ? AND trashable_type NOT IN (?)', time, 'TypeOne'])
     TrashRecord.empty_trash(max_age, :except => :TypeOne)
   end
   
@@ -244,6 +260,27 @@ describe "TrashRecord" do
     trash = TrashRecord.new(TestTrashableRecord.new(:name => 'name'))
     TrashRecord.should_receive(:find).with(:all, :conditions => {:trashable_type => 'TestTrashableRecord', :trashable_id => 1}).and_return([trash])
     TrashRecord.find_trash(TestTrashableRecord, 1).should == trash
+  end
+  
+  it "should really save the trash record to the database and restore without any mocking" do
+    TrashRecord.empty_trash(0)
+    TrashRecord.count.should == 0
+    
+    attributes = {'id' => 1, 'name' => 'name value', 'value' => rand(1000000)}
+    original = TestTrashableRecord.new(attributes)
+    trash = TrashRecord.new(original)
+    trash.save!
+    TrashRecord.count.should == 1
+    
+    record = TrashRecord.find_trash(TestTrashableRecord, 1).restore
+    record.class.should == TestTrashableRecord
+    record.id.should == 1
+    record.attributes.should == attributes
+    
+    TrashRecord.empty_trash(0, :except => TestTrashableRecord)
+    TrashRecord.count.should == 1
+    TrashRecord.empty_trash(0, :only => TestTrashableRecord)
+    TrashRecord.count.should == 0
   end
   
 end

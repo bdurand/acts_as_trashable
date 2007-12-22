@@ -34,10 +34,22 @@ module ActsAsTrashable
   
   module InstanceMethods
     def destroy_with_trash
+      return destroy_without_trash if @acts_as_trashable_disabled
       TrashRecord.transaction do
         trash = TrashRecord.new(self)
         trash.save!
-        destroy_without_trash
+        return destroy_without_trash
+      end
+    end
+    
+    # Call this method to temporarily disable the trash feature within a block.
+    def disable_trash
+      save_val = @acts_as_trashable_disabled
+      begin
+        @acts_as_trashable_disabled = true
+        yield if block_given?
+      ensure
+        @acts_as_trashable_disabled = save_val
       end
     end
   end

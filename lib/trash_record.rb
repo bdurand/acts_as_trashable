@@ -1,3 +1,5 @@
+require 'zlib'
+
 class TrashRecord < ActiveRecord::Base
 
   # Create a new trash record for the provided record.
@@ -5,7 +7,7 @@ class TrashRecord < ActiveRecord::Base
     super({})
     self.trashable_type = record.class.name
     self.trashable_id = record.id
-    self.data = Marshal.dump(serialize_attributes(record))
+    self.data = Zlib::Deflate.deflate(Marshal.dump(serialize_attributes(record)))
   end
 
   # Restore a trashed record into an object. The record will not be saved.
@@ -35,7 +37,9 @@ class TrashRecord < ActiveRecord::Base
 
   # Attributes of the trashed record as a hash.
   def trashable_attributes
-    Marshal.load(self.data) if self.data
+    return nil unless self.data
+    uncompressed = Zlib::Inflate.inflate(self.data) rescue uncompressed = self.data # backward compatibility with uncompressed data
+    Marshal.load(uncompressed)
   end
   
   # Find a trash entry by class and id.
@@ -48,7 +52,7 @@ class TrashRecord < ActiveRecord::Base
   # classes which should be cleared. This is useful if you want to keep different classes for different
   # lengths of time.
   def self.empty_trash (max_age, options = {})
-    sql = 'created_at < ?'
+    sql = 'created_at <= ?'
     args = [max_age.ago]
     
     vals = options[:only] || options[:except]
@@ -71,11 +75,11 @@ class TrashRecord < ActiveRecord::Base
     already_serialized["#{record.class}.#{record.id}"] = true
     
     record.class.reflections.values.each do |association|
-      if association.macro == :has_many and association.options[:dependent] == :destroy
-        attrs[association.name] = record.send(association.name).collect{|r| serialize_attributes(r)}
-      elsif association.macro == :has_one and association.options[:dependent] == :destroy
+      if association.macro == :has_many and [:destroy, :delete_all].include?(association.options[:dependent])
+        attrs[association.name] = record.send(association.name).collect{|r| serialize_attributes(r, already_serialized)}
+      elsif association.macro == :has_one and [:destroy, :delete_all].include?(association.options[:dependent])
         associated = record.send(association.name)
-        attrs[association.name] = serialize_attributes(associated) unless associated.nil?
+        attrs[association.name] = serialize_attributes(associated, already_serialized) unless associated.nil?
       elsif association.macro == :has_and_belongs_to_many
         attrs[association.name] = record.send("#{association.name.to_s.singularize}_ids".to_sym)
       end
@@ -111,7 +115,8 @@ class TrashRecord < ActiveRecord::Base
         associated_record = record.send(association).build
       end
     elsif reflection.macro == :has_one
-      associated_record = record.send("build_#{association}")
+      associated_record = reflection.klass.new
+      record.send("#{association}=", associated_record)
     elsif reflection.macro == :has_and_belongs_to_many
       record.send("#{association.to_s.singularize}_ids=", attributes)
       return
@@ -128,6 +133,5 @@ class TrashRecord < ActiveRecord::Base
       restore_association(associated_record, key, values)
     end
   end
-  
   
 end

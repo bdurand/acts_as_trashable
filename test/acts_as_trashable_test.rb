@@ -26,8 +26,18 @@ describe "ActsAsTrashable" do
     TrashRecord.should_receive(:transaction).and_yield
     TrashRecord.should_receive(:new).with(record).and_return(trash)
     trash.should_receive(:save!)
-    record.should_receive(:really_destroy)
-    record.destroy
+    record.should_receive(:really_destroy).and_return(:retval)
+    record.destroy.should == :retval
+  end
+  
+  it "should not create a trash entry when a model is destroyed inside a disable block" do
+    record = TestTrashableModel.new
+    TrashRecord.should_not_receive(:transaction)
+    TrashRecord.should_not_receive(:new)
+    record.should_receive(:really_destroy).and_return(:retval)
+    record.disable_trash do
+      record.destroy.should == :retval
+    end
   end
   
   it "should be able to empty the trash based on age" do
