@@ -72,6 +72,21 @@ describe "ActsAsTrashable Full Test" do
           self[:secret] = val
         end
       end
+      
+      module ActsAsTrashable
+        class TrashableNamespaceModel < ActiveRecord::Base
+          ActiveRecord::Migration.create_table(:trashable_namespace_models) do |t|
+            t.column :name, :string
+            t.column :type_name, :string
+          end unless table_exists?
+          
+          set_inheritance_column :type_name
+          acts_as_trashable
+        end
+        
+        class TrashableSubclassModel < TrashableNamespaceModel
+        end
+      end
     end
   end
   
@@ -84,6 +99,7 @@ describe "ActsAsTrashable Full Test" do
       ActiveRecord::Migration.drop_table(:trashable_test_one_things) if TrashableTestOneThing.table_exists?
       ActiveRecord::Migration.drop_table(:non_trashable_test_models_trashable_test_models) if NonTrashableTestModelsTrashableTestModel.table_exists?
       ActiveRecord::Migration.drop_table(:non_trashable_test_models) if NonTrashableTestModel.table_exists?
+      ActiveRecord::Migration.drop_table(:trashable_namespace_models) if ActsAsTrashable::TrashableNamespaceModel.table_exists?
     end
   end
   
@@ -96,6 +112,7 @@ describe "ActsAsTrashable Full Test" do
     NonTrashableTestModelsTrashableTestModel.delete_all
     NonTrashableTestModel.delete_all
     TrashRecord.delete_all
+    ActsAsTrashable::TrashableNamespaceModel.delete_all
   end
 
   it "should be able to trash a record and restore without associations" do
@@ -211,6 +228,40 @@ describe "ActsAsTrashable Full Test" do
     TrashRecord.count.should == 0
     TrashableTestModel.count.should == 1
     NonTrashableTestModelsTrashableTestModel.count.should == 2
+  end
+  
+  it "should be able to trash a record and restore without associations" do
+    model = ActsAsTrashable::TrashableNamespaceModel.new
+    model.name = 'test'
+    model.save!
+    TrashRecord.count.should == 0
+    
+    model.destroy
+    TrashRecord.count.should == 1
+    ActsAsTrashable::TrashableNamespaceModel.count.should == 0
+    
+    restored = ActsAsTrashable::TrashableNamespaceModel.restore_trash!(model.id)
+    restored.reload
+    restored.name.should == 'test'
+    TrashRecord.count.should == 0
+    ActsAsTrashable::TrashableNamespaceModel.count.should == 1
+  end
+  
+  it "should be able to trash a record and restore without associations" do
+    model = ActsAsTrashable::TrashableSubclassModel.new
+    model.name = 'test'
+    model.save!
+    TrashRecord.count.should == 0
+    
+    model.destroy
+    TrashRecord.count.should == 1
+    ActsAsTrashable::TrashableSubclassModel.count.should == 0
+    
+    restored = ActsAsTrashable::TrashableSubclassModel.restore_trash!(model.id)
+    restored.reload
+    restored.name.should == 'test'
+    TrashRecord.count.should == 0
+    ActsAsTrashable::TrashableSubclassModel.count.should == 1
   end
   
 end

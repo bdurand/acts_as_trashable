@@ -18,6 +18,14 @@ describe "TrashRecord" do
       @reflections = vals
     end
   
+    def self.base_class
+      self
+    end
+    
+    def self.inheritance_column
+      'type'
+    end
+    
     def id
       attributes['id']
     end
@@ -262,8 +270,11 @@ describe "TrashRecord" do
     max_age = mock(:max_age)
     time = 1.day.ago
     max_age.should_receive(:ago).and_return(time)
+    mock_class_1 = stub(:class_1, :base_class => stub(:base_class_1, :name => 'TypeOne'))
+    mock_class_1.should_receive(:kind_of?).with(Class).and_return(true)
+    mock_class_2 = 'TypeTwo'
     TrashRecord.should_receive(:delete_all).with(['created_at <= ? AND trashable_type IN (?, ?)', time, 'TypeOne', 'TypeTwo'])
-    TrashRecord.empty_trash(max_age, :only => [:TypeOne, :TypeTwo])
+    TrashRecord.empty_trash(max_age, :only => [mock_class_1, mock_class_2])
   end
   
   it "should be able to empty the trash for all except certain types" do
@@ -271,7 +282,7 @@ describe "TrashRecord" do
     time = 1.day.ago
     max_age.should_receive(:ago).and_return(time)
     TrashRecord.should_receive(:delete_all).with(['created_at <= ? AND trashable_type NOT IN (?)', time, 'TypeOne'])
-    TrashRecord.empty_trash(max_age, :except => :TypeOne)
+    TrashRecord.empty_trash(max_age, :except => :type_one)
   end
   
   it "should be able to find a record by trashed type and id" do
