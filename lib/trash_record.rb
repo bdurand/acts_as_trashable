@@ -5,7 +5,7 @@ class TrashRecord < ActiveRecord::Base
   # Create a new trash record for the provided record.
   def initialize (record)
     super({})
-    self.trashable_type = record.class.name
+    self.trashable_type = record.class.base_class.name
     self.trashable_id = record.id
     self.data = Zlib::Deflate.deflate(Marshal.dump(serialize_attributes(record)))
   end
@@ -13,6 +13,17 @@ class TrashRecord < ActiveRecord::Base
   # Restore a trashed record into an object. The record will not be saved.
   def restore
     restore_class = self.trashable_type.constantize
+    
+    # Check if we have a type field, if yes, assume single table inheritance and restore the actual class instead of the stored base class
+    sti_type = self.trashable_attributes[restore_class.inheritance_column]
+    if sti_type
+      begin
+        restore_class = self.trashable_type.send(:type_name_with_module, sti_type).constantize
+      rescue NameError
+        # Seems our assumption was wrong and we have no STI
+      end
+    end
+    
     attrs, association_attrs = attributes_and_associations(restore_class, self.trashable_attributes)
     
     record = restore_class.new
@@ -44,7 +55,7 @@ class TrashRecord < ActiveRecord::Base
   
   # Find a trash entry by class and id.
   def self.find_trash (klass, id)
-    find(:all, :conditions => {:trashable_type => klass.to_s, :trashable_id => id}).last
+    find(:all, :conditions => {:trashable_type => klass.base_class.name, :trashable_id => id}).last
   end
   
   # Empty the trash by deleting records older than the specified maximum age. You can optionally specify
@@ -61,7 +72,7 @@ class TrashRecord < ActiveRecord::Base
       sql << ' AND trashable_type'
       sql << ' NOT' unless options[:only]
       sql << " IN (#{vals.collect{|v| '?'}.join(', ')})"
-      args.concat(vals.collect{|v| v.to_s})
+      args.concat(vals.collect{|v| v.kind_of?(Class) ? v.base_class.name : v.to_s.camelize})
     end
     
     delete_all([sql] + args)
