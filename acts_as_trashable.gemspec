@@ -16,9 +16,14 @@ Gem::Specification.new do |s|
     "README.rdoc"
   ]
   s.files = [
-    "MIT-LICENSE",
+    ".gitignore",
+     "MIT-LICENSE",
+     "README.rdoc",
      "Rakefile",
+     "VERSION",
+     "acts_as_trashable.gemspec",
      "lib/acts_as_trashable.rb",
+     "lib/acts_as_trashable/trash_record.rb",
      "spec/acts_as_trashable_spec.rb",
      "spec/full_spec.rb",
      "spec/spec_helper.rb",
