@@ -1,3 +1,4 @@
+require 'rubygems'
 require File.expand_path('../../lib/acts_as_trashable', __FILE__)
 require 'sqlite3'
 
