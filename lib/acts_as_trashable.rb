@@ -1,4 +1,9 @@
+require 'active_record'
+require 'active_support/all'
+
 module ActsAsTrashable
+  
+  autoload :TrashRecord, File.expand_path('../acts_as_trashable/trash_record', __FILE__)
   
   def self.included (base)
     base.extend(ActsMethods)
@@ -55,3 +60,5 @@ module ActsAsTrashable
   end
   
 end
+
+ActiveRecord::Base.send(:include, ActsAsTrashable)
