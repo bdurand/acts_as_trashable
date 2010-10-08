@@ -35,7 +35,7 @@ module ActsAsTrashable
         connection.create_table :trash_records do |t|
           t.string :trashable_type, :null => false
           t.integer :trashable_id, :null => false
-          t.binary :data, :limit => 5.megabytes
+          t.binary :data, :limit => (connection.adapter_name == "MySQL" ? 5.megabytes : nil)
           t.timestamp :created_at
         end
 

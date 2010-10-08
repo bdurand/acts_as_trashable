@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{acts_as_trashable}
-  s.version = "1.0.3"
+  s.version = "1.0.4"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Brian Durand"]
-  s.date = %q{2010-06-22}
+  s.date = %q{2010-10-08}
   s.description = %q{ActiveRecord extension that serializes destroyed records into a trash table from which they can be restored. This is intended to reduce the risk of users misusing your application's delete function and losing data.}
   s.email = %q{brian@embellishedvisions.com}
   s.extra_rdoc_files = [
