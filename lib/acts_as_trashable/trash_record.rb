@@ -56,12 +56,15 @@ module ActsAsTrashable
     def restore
       restore_class = self.trashable_type.constantize
     
-      # Check if we have a type field, if yes, assume single table inheritance and restore the actual class instead of the stored base class
       sti_type = self.trashable_attributes[restore_class.inheritance_column]
       if sti_type
         begin
-          restore_class = self.trashable_type.send(:type_name_with_module, sti_type).constantize
-        rescue NameError
+          if !restore_class.store_full_sti_class && !sti_type.start_with?("::")
+            sti_type = "#{restore_class.parent.name}::#{sti_type}"
+          end
+          restore_class = sti_type.constantize
+        rescue NameError => e
+          raise e
           # Seems our assumption was wrong and we have no STI
         end
       end
