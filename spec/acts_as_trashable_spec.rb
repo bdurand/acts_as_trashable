@@ -46,6 +46,16 @@ describe ActsAsTrashable do
       record.destroy.should == :retval
     end
   end
+
+  it "should not create a trash entry when a model is marked as not trashable" do
+    record = TestTrashableModel.new
+    ActsAsTrashable::TrashRecord.should_not_receive(:transaction)
+    ActsAsTrashable::TrashRecord.should_not_receive(:new)
+    record.should_receive(:trashable?).and_return(false)
+    record.should_receive(:really_destroy).and_return(:retval)
+    record.destroy.should == :retval
+  end
+
   
   it "should be able to empty the trash based on age" do
     ActsAsTrashable::TrashRecord.should_receive(:empty_trash).with(1.day, :only => TestTrashableModel)
