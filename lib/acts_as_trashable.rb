@@ -39,7 +39,9 @@ module ActsAsTrashable
   
   module InstanceMethods
     def destroy_with_trash
-      return destroy_without_trash if @acts_as_trashable_disabled
+      return destroy_without_trash if 
+        @acts_as_trashable_disabled || !trashable?
+
       TrashRecord.transaction do
         trash = TrashRecord.new(self)
         trash.save!
@@ -56,6 +58,11 @@ module ActsAsTrashable
       ensure
         @acts_as_trashable_disabled = save_val
       end
+    end
+
+    # Override this in subclasses to provide per-model trashable logic
+    def trashable?
+      true
     end
   end
   

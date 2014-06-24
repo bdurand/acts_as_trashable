@@ -20,6 +20,8 @@ The ActsAsTrashable::ClassMethods are mixed into your model when you call acts_a
 
 If you wish to destroy a record without trashing it, perform the destroy inside a disable_trash block on the model (i.e. record.disable_trash{record.destroy}). Also, this gem does not affect the delete or delete_all methods on active record. These will still delete the records directly from the database.
 
+If you want to conditionally disable ActsAsTrashable on a per-instance basis, you can define a #trashable? instance method.  If #trashable? returns true (as does the default implementation), then ActsAsTrashable will save the record as normal.  If it returns false, then the model will not be saved.
+
 == Setup
 
 To create the table structure for ActsAsTrashable::TrashRecord, simply add a migration to your project that calls
